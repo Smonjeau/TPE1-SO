@@ -1,0 +1,29 @@
+----------------------
+    RESPONSABLES
+----------------------
+
+ - Master: Mati
+ - Esclavo: Bruno
+ - Vista: Santi
+
+
+----------------------
+  TERMINOS EN COMUN
+----------------------
+
+ESCLAVO:
+ - La variable que contiene el fd de su endpoint del pipe será "fd2".
+ - Recibe la lista de archivos desde el pipe, en formato CSV.
+ - Escribe el resultado a su pipe, en formato CSV.
+
+VISTA:
+ - Recibe la dirección de la shm desde stdin o argumentos.
+ - Muestra el contenido del buffer, el cual está en formato CSV.
+
+
+ 
+----------------------
+  DECISIONES TOMADAS
+----------------------
+ -
+ -
