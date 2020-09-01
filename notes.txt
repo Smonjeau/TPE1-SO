@@ -35,3 +35,4 @@ VISTA:
   CONSIDERACIONES
 ----------------------
  - Al iniciar un contenedor de docker hay que instalar minisat
+ - Recordar hacer make + manual y aclarar librerias
