@@ -15,35 +15,43 @@ ESCLAVO:
  - La variable que contiene el fd de su endpoint del pipe será "fd2".
  - Recibe la lista de archivos desde el pipe, en formato CSV.
  - Escribe el resultado a su pipe, en formato CSV.
+ - El esclavo espera las direcciones con path relativo completo (no solo nombre del archivo)
+ - El esclavo va a ejecutar el minisat en tantos archivos como reciba, es decir, el master debe controlar cuantos archivos distribuye entre sus esclavos.
+ - El esclavo lee del pipe y guarda en un buffer de hasta 1024 caracteres. (En teoria es mas que suficiente si no son mas de 3 archivos a la vez)
 
 VISTA:
  - Recibe la dirección de la shm desde stdin o argumentos.
  - Muestra el contenido del buffer, el cual está en formato CSV.
 
 
- 
+----------------------
+  CONSIDERACIONES
+----------------------
+
+ - Al iniciar un contenedor de docker hay que instalar minisat
+ - Recordar hacer make + manual y aclarar librerias
+
+
+----------------------
+  FLUJO MASTER/SLAVE
+----------------------
+
+          REQ
+ Slave ---------> Master
+
+     a,b,c || EMPTY
+ Slave <-------- Master
+
+       .....
+
+        csv_ans
+ Slave ---------> Master
+
+          ACK
+ Slave <-------- Master
+
+
 ----------------------
   DECISIONES TOMADAS
 ----------------------
  -
- -
-
-        REQ
- Slave ------> Master
-
-        a,b,c
- Slave <----- Master
-
-       .....
-
-       csv_ans
- Slave ------> Master
-
-         ACK
- Slave <----- Master
-
-
-
-
-READ_FD = {0, 1, 2, 3, 4, ..., 9}
-           0  1  1  0  0       0
