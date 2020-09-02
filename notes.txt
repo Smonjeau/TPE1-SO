@@ -27,3 +27,23 @@ VISTA:
 ----------------------
  -
  -
+
+        REQ
+ Slave ------> Master
+
+        a,b,c
+ Slave <----- Master
+
+       .....
+
+       csv_ans
+ Slave ------> Master
+
+         ACK
+ Slave <----- Master
+
+
+
+
+READ_FD = {0, 1, 2, 3, 4, ..., 9}
+           0  1  1  0  0       0
