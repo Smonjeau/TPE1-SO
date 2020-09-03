@@ -104,6 +104,8 @@ void process(char *input, char *output, int slave_id) {
 		close(pipe_fd_sat_grep[0]);
 		close(pipe_fd_sat_grep[1]);
 
+		while ((wait(NULL)) > 0); //Espero a que terminen los 2
+
 
 
 
