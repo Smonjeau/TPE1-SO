@@ -50,6 +50,8 @@ void process(char *input, char *output, int slave_id){
     printf("@S%d: %s\n", slave_id, input);
     sprintf(output, "**%s**", input);
 
+    sleep(3);
+
     // Split the input and process each path, then return all answers in CSV format
 
 }

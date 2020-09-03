@@ -55,3 +55,65 @@ VISTA:
   DECISIONES TOMADAS
 ----------------------
  -
+
+
+----------------------
+     FLUJO SHM
+----------------------
+
+Master:
+-------
+sem_wait(s1);
+sem_post(s1);
+
+write(shm, ...);
+
+
+View:
+-------
+while(1){
+
+  if(strlen(base) > 0){
+    sem_wait(s1);
+    sem_post(s1);
+
+    printf("%s", base);
+    base[0] = 0;
+
+  }
+
+}
+
+
+
+----------------------
+     FLUJO SHM
+----------------------
+
+Master:
+-------
+sem_wait(not_full);
+sem_wait(free_access);
+sem_post(free_access);
+
+write(shm, ...);
+
+signal(not_empty);
+
+
+View:
+-------
+while(1){
+
+  sem_wait(not_empty);
+  sem_wait(free_access);
+  sem_post(free_access);
+
+  printf("%s", base);
+  
+  sem_post(not_full);
+
+}
+
+     
+34 -- -- -- 12 *

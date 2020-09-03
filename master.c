@@ -1,9 +1,11 @@
 #define SLAVES_QTY 3
-#define FILES_TO_DELEGATE 2
+#define FILES_TO_DELEGATE 1
 
 #define SLAVE_READ_TIMEOUT_USEC 100
 #define MAX_MESSAGE_LEN 100
 
+#define SHM_NAME "/master-view"
+#define SHM_SIZE 1024
 
 #include <unistd.h>
 #include <stdio.h>
@@ -11,24 +13,67 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
+char * setup_shm();
 void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]);
-void use_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files);
+void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles, char **files);
 void kill_slaves(int slave_pids[]);
+void close_shm(char *shm_base);
 
 
 int main(int argc, char **argv){
 
+    if(argc < 2){
+        printf("Usage: ./master f1 ... fn\n");
+    }
+
     int slave_pids[SLAVES_QTY];
     int sm_fds[SLAVES_QTY][2];      // Slave -> Master pipes
     int ms_fds[SLAVES_QTY][2];      // Master -> Slave pipes
+    
+    char *shm_base = setup_shm();
 
     create_slaves(sm_fds, ms_fds, slave_pids);
     
-    use_slaves(sm_fds, ms_fds, atoi(argv[1]), argv+2);
+    handle_slaves(sm_fds, ms_fds, shm_base, argc-1, argv+1);
 
     kill_slaves(slave_pids);
+
+    close_shm(shm_base);
+
+}
+
+
+char * setup_shm(){
+
+    int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
+    if(shm_fd == -1){
+        perror("shm_open");
+        exit(EXIT_FAILURE);
+    }
+
+    if(ftruncate(shm_fd, SHM_SIZE)==-1){
+        perror("ftruncate");
+        exit(EXIT_FAILURE);
+    }
+
+    char * shm_base = (char *) mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if(shm_base == MAP_FAILED){
+        perror("mmap");
+        exit(EXIT_FAILURE);
+    }
+
+    if(close(shm_fd) == -1){
+        perror("close shm_fd");
+        exit(EXIT_FAILURE);
+    }
+
+    return shm_base;
 
 }
 
@@ -75,7 +120,7 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]){
 }
 
 
-void use_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
+void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles, char **files){
 
     int filen=0, pending_jobs=0;
     while(filen<nfiles || pending_jobs>0){
@@ -87,7 +132,6 @@ void use_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
         for(int i=0; i<SLAVES_QTY; i++){
             FD_SET(sm_fds[i][0], &fdset);
         }
-
 
         // Set read timeout
 
@@ -142,6 +186,8 @@ void use_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
                             printf("@M - S%d: %s\n", i, input);
 
+                            sprintf(shm_base, "%s", input);
+
                             write(ms_fds[i][1], "ACK", 4);
                             pending_jobs -= 1;
 
@@ -160,6 +206,17 @@ void kill_slaves(int slave_pids[]){
 
     for(int i=0; i<SLAVES_QTY; i++){
         kill(slave_pids[i], SIGKILL);
+    }
+
+}
+
+
+void close_shm(char *shm_base){
+
+
+    if(munmap(shm_base, SHM_SIZE) == -1){
+        perror("munmap");
+        exit(1);
     }
 
 }

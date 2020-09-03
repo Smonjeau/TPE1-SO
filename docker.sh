@@ -1,1 +1,1 @@
-docker run -v ${PWD}:/root --security-opt seccomp:unconfined -ti agodio/itba-so:1.0 
+docker run -v `pwd`:/home --security-opt seccomp:unconfined -ti agodio/itba-so:1.0 /home/compile.sh
