@@ -52,7 +52,9 @@ void process(char *input, char *output, int slave_id) {
     //sprintf(output, "**%s**", input);
     int pipe_fd_sat_grep[2];
     int pipe_fd_grep_slave[2];
-
+    char inputFromGrep[200];
+    char outputForMaster[200];
+    outputForMaster[0] = 0;
     int forkMinisat, forkGrep;    
 	char token[100];
 	token = strtok(input, ",");
@@ -82,11 +84,17 @@ void process(char *input, char *output, int slave_id) {
 			perror("fork");
 		}
 
+		//Pipe para comunicar grep y slave
+		if(pipe(pipe_fd_grep_slave) == -1) {
+			perror("pipe");
+			exit(EXIT_FAILURE);
+		}
+
 		forkGrep = fork();
-		if(forkGrep == 0) {
-			//grep lee y filtra
+		if(forkGrep == 0) { //Proceso que ejcuta grep para filtrar salida del minisat		
 			close(pipe_fd_sat_grep[1]); //Cierro lo que no uso
-			if (dup2(pipe_fd_sat_grep[0], 0) < 0) {  
+			close(pipe_fd_grep_slave[0]); //Cierro lo que no uso
+			if (dup2(pipe_fd_sat_grep[0], 0) < 0 || dup2(pipe_fd_grep_slave[1], 1) < 0) {  
 	            perror("dup");
 	            exit(EXIT_FAILURE);
 	        }
@@ -100,13 +108,26 @@ void process(char *input, char *output, int slave_id) {
 			perror("fork");
 		}
 
-		//Parent, cierro pipe
+		//Leo linea por linea lo que imprimio el grep al pipe
+		size_t inputFromGrepSize = 200;
+		while(getline(&inputFromGrep, &inputFromGrepSize, pipe_fd_grep_slave[0]) > 0) {
+			strcat(outputForMaster, inputFromGrep);
+			strcat(outputForMaster, ",");
+		}
+		outputForMaster[strlen(outputForMaster)-1] = '\n';
+        
+
+
+
+		//Parent, cierro pipes
 		close(pipe_fd_sat_grep[0]);
 		close(pipe_fd_sat_grep[1]);
+		close(pipe_fd_grep_slave[0]);
+		close(pipe_fd_grep_slave[1]);
 
 		while ((wait(NULL)) > 0); //Espero a que terminen los 2
 
-
+		printf("%s", outputForMaster);
 
 
 		token = strtok(NULL, ",");
