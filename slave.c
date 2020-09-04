@@ -1,10 +1,13 @@
 #define MAX_MESSAGE_LEN 100
 
+#define _GNU_SOURCE
+
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 
 void process(char *input, char *output, int slave_id);
@@ -52,11 +55,11 @@ void process(char *input, char *output, int slave_id) {
     //sprintf(output, "**%s**", input);
     int pipe_fd_sat_grep[2];
     int pipe_fd_grep_slave[2];
-    char inputFromGrep[200];
+    char * inputFromGrep = malloc(200 * sizeof(char));
     char outputForMaster[200];
     outputForMaster[0] = 0;
     int forkMinisat, forkGrep;    
-	char token[100];
+	char * token = malloc(100 * sizeof(char));//char token[100];
 	token = strtok(input, ",");
 	while(token != NULL) {
 		//Asumo que no hace falta hacer trim, aunque cualquier cosa es sencillo		
@@ -80,7 +83,7 @@ void process(char *input, char *output, int slave_id) {
 	            exit(EXIT_FAILURE);
 	        }
 
-		} else if(forkResult == -1) {
+		} else if(forkMinisat == -1) {
 			perror("fork");
 		}
 
@@ -104,17 +107,24 @@ void process(char *input, char *output, int slave_id) {
 	            exit(EXIT_FAILURE);
 	        }
 
-		} else if(forkResult == -1) {
+		} else if(forkGrep == -1) {
 			perror("fork");
+			exit(EXIT_FAILURE);
 		}
 
 		//Leo linea por linea lo que imprimio el grep al pipe
 		size_t inputFromGrepSize = 200;
-		while(getline(&inputFromGrep, &inputFromGrepSize, pipe_fd_grep_slave[0]) > 0) {
+		FILE * fp = fdopen(pipe_fd_grep_slave[0], "r");
+		while(getline(&inputFromGrep, &inputFromGrepSize, fp) > 0) {
 			strcat(outputForMaster, inputFromGrep);
 			strcat(outputForMaster, ",");
 		}
 		outputForMaster[strlen(outputForMaster)-1] = '\n';
+
+		if(fclose(fp) != 0) {
+			perror("fclose");
+			exit(EXIT_FAILURE);
+		}
         
 
 
