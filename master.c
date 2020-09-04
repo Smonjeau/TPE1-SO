@@ -1,14 +1,22 @@
-#define SLAVES_QTY 3
-#define FILES_TO_DELEGATE 1
+/* --------------------------------------------------------------------------------------------
+                                     DEFINITIONS
+-------------------------------------------------------------------------------------------- */
 
-#define SLAVE_READ_TIMEOUT_USEC 100
-#define MAX_MESSAGE_LEN 100
+#define SLAVES_QTY 3                          // Number of slaves to create (fixed amount)
+#define FILES_TO_DELEGATE 1                   // Number of files given to each slave per request
 
-#define SHM_NAME "/master-view"
-#define SHM_SIZE 1024
+#define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
+#define MAX_MESSAGE_LEN 100                   // Max extension of messages between master/slaves
 
-#define SEM1_NAME "/sem_empty"
-#define SEM2_NAME "/sem_full"
+#define SHM_NAME "/master-view"               // Master-view shared memory name
+#define SHM_SIZE 1024                         // Master-view shared memory size in bytes
+
+#define SEM_READ_BYTES "/read_bytes"          // Semaphore whose value is the available bytes for read
+#define SEM_WRITE_BYTES "/write_bytes"        // Semaphore whose value is the available bytes for write
+
+/* --------------------------------------------------------------------------------------------
+                                     INCLUDES
+-------------------------------------------------------------------------------------------- */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -17,17 +25,31 @@
 #include <string.h>
 #include <signal.h>
 #include <fcntl.h>
+#include <semaphore.h>
 #include <sys/select.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
-char * setup_shm();
-void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]);
-void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles, char **files);
-void kill_slaves(int slave_pids[]);
-void close_shm(char *shm_base);
+/* --------------------------------------------------------------------------------------------
+                                     PROTOTYPES
+-------------------------------------------------------------------------------------------- */
 
+void setup_buffer(char **shm_base, sem_t **sem_read_bytes, sem_t **sem_write_bytes);
+
+void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]);
+
+void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, sem_t *sem_read_bytes,
+    sem_t *sem_write_bytes, int nfiles, char **files);
+
+void kill_slaves(int slave_pids[]);
+
+void close_buffer(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes);
+
+
+/* --------------------------------------------------------------------------------------------
+                                     FUNCTIONS
+-------------------------------------------------------------------------------------------- */
 
 int main(int argc, char **argv){
 
@@ -39,44 +61,59 @@ int main(int argc, char **argv){
     int sm_fds[SLAVES_QTY][2];      // Slave -> Master pipes
     int ms_fds[SLAVES_QTY][2];      // Master -> Slave pipes
     
-    char *shm_base = setup_shm();
+    char *shm_base=NULL; sem_t *sem_read_bytes=NULL, *sem_write_bytes=NULL;
+    setup_buffer(&shm_base, &sem_read_bytes, &sem_write_bytes);
 
     create_slaves(sm_fds, ms_fds, slave_pids);
     
-    handle_slaves(sm_fds, ms_fds, shm_base, argc-1, argv+1);
+    handle_slaves(sm_fds, ms_fds, shm_base, sem_read_bytes, sem_write_bytes, argc-1, argv+1);
 
     kill_slaves(slave_pids);
 
-    close_shm(shm_base);
+    close_buffer(shm_base, sem_read_bytes, sem_write_bytes);
 
 }
 
 
-char * setup_shm(){
+void setup_buffer(char **shm_base, sem_t **sem_read_bytes, sem_t **sem_write_bytes){
+
+    // Setup shared memory
 
     int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if(shm_fd == -1){
-        perror("shm_open");
+        perror("Opening shared memory");
         exit(EXIT_FAILURE);
     }
 
     if(ftruncate(shm_fd, SHM_SIZE)==-1){
-        perror("ftruncate");
+        perror("Truncating shared memory");
         exit(EXIT_FAILURE);
     }
 
-    char * shm_base = (char *) mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if(shm_base == MAP_FAILED){
-        perror("mmap");
+    *shm_base = (char *) mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if(*shm_base == MAP_FAILED){
+        perror("Mapping shared memory");
         exit(EXIT_FAILURE);
     }
 
     if(close(shm_fd) == -1){
-        perror("close shm_fd");
+        perror("Closing shared memory file descriptor");
         exit(EXIT_FAILURE);
     }
 
-    return shm_base;
+    // Setup semaphores
+
+    *sem_read_bytes = sem_open(SEM_READ_BYTES, O_CREAT | O_RDWR, 0666, 0);
+    if(*sem_read_bytes == SEM_FAILED){
+        perror("Opening read_bytes semaphore");
+        exit(EXIT_FAILURE);
+    }
+
+    *sem_write_bytes = sem_open(SEM_WRITE_BYTES, O_CREAT | O_RDWR, 0666, SHM_SIZE);
+    if(*sem_write_bytes == SEM_FAILED){
+        perror("Opening write_bytes semaphore");
+        exit(EXIT_FAILURE);
+    }
 
 }
 
@@ -92,7 +129,7 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]){
 
         if(npid == -1){
 
-            perror("Fork");
+            perror("Forking master process");
 
         }else if(npid == 0){
 
@@ -107,7 +144,7 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]){
             char *slave_args[] = {"./slave.out", wr_fd_str, rd_fd_str, slave_id_str, NULL};
             execv("./slave.out", slave_args);
 
-            perror("Exec");
+            perror("Executing a slave");
 
         }else{
 
@@ -123,7 +160,10 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2], int slave_pids[]){
 }
 
 
-void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles, char **files){
+void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, sem_t *sem_read_bytes,
+    sem_t *sem_write_bytes, int nfiles, char **files){
+
+    // The master must listen to slaves until there are no more files nor pending jobs
 
     int filen=0, pending_jobs=0;
     while(filen<nfiles || pending_jobs>0){
@@ -148,7 +188,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles,
         switch(available_fds){
 
             case -1:
-                perror("Select");
+                perror("Selecting available file descriptors");
                 break;
 
             default:
@@ -170,7 +210,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles,
                                 continue;
                             }
 
-                            // Create output
+                            // Create files message for slave
 
                             char output[MAX_MESSAGE_LEN];
                             int outpos = sprintf(output, "%s", files[filen++]);
@@ -189,7 +229,16 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], char *shm_base, int nfiles,
 
                             printf("@M - S%d: %s\n", i, input);
 
-                            sprintf(shm_base, "%s", input);
+                            static int buff_pos = 0;
+                            for(int input_pos=0; input[input_pos] != 0; input_pos++){
+                                sem_wait(sem_write_bytes);
+                                sprintf(shm_base + (buff_pos++) % SHM_SIZE, "%c", input[input_pos]);
+                                sem_post(sem_read_bytes);
+                            }
+
+                            sem_wait(sem_write_bytes);
+                            sprintf(shm_base + (buff_pos++) % SHM_SIZE, "%c", '\n');
+                            sem_post(sem_read_bytes);
 
                             write(ms_fds[i][1], "ACK", 4);
                             pending_jobs -= 1;
@@ -214,12 +263,25 @@ void kill_slaves(int slave_pids[]){
 }
 
 
-void close_shm(char *shm_base){
+void close_buffer(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes){
 
+    // Close shared memory
 
     if(munmap(shm_base, SHM_SIZE) == -1){
         perror("munmap");
         exit(1);
+    }
+
+    // Close semaphores
+
+    if(sem_close(sem_read_bytes) == -1){
+        perror("closing read_bytes semaphore");
+        exit(EXIT_FAILURE);
+    }
+
+    if(sem_close(sem_write_bytes) == -1){
+        perror("closing write_bytes semaphore");
+        exit(EXIT_FAILURE);
     }
 
 }

@@ -52,68 +52,48 @@ VISTA:
 
 
 ----------------------
+     FLUJO SHM
+----------------------
+
+Producer:
+
+int pc;
+sem_wait(write_bytes);
+
+write(pc % SIZE);
+pc += 1;
+
+sem_post(read_bytes);
+
+
+Consumer:
+
+int cc;
+sem_wait(read_bytes);
+
+read(cc % SIZE);
+cc += 1;
+
+sem_post(write_bytes);
+
+
+      H
+0 0 0 0 0 0
+    T
+
+write_bytes = 6
+read_bytes = 0
+
+
+----------------------
+     FORMATO BUFFER
+----------------------
+
+nombre_archivo, sat_1, ..., sat_n, slave_id
+nombre_archivo, sat_1, ..., sat_n, slave_id
+
+
+----------------------
   DECISIONES TOMADAS
 ----------------------
  -
-
-
-----------------------
-     FLUJO SHM
-----------------------
-
-Master:
--------
-sem_wait(s1);
-sem_post(s1);
-
-write(shm, ...);
-
-
-View:
--------
-while(1){
-
-  if(strlen(base) > 0){
-    sem_wait(s1);
-    sem_post(s1);
-
-    printf("%s", base);
-    base[0] = 0;
-
-  }
-
-}
-
-
-
-----------------------
-     FLUJO SHM
-----------------------
-
-Master:
--------
-sem_wait(not_full);
-sem_wait(free_access);
-sem_post(free_access);
-
-write(shm, ...);
-
-signal(not_empty);
-
-
-View:
--------
-while(1){
-
-  sem_wait(not_empty);
-  sem_wait(free_access);
-  sem_post(free_access);
-
-  printf("%s", base);
-  
-  sem_post(not_full);
-
-}
-
-     
-34 -- -- -- 12 *
