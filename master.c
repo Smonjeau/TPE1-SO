@@ -7,6 +7,9 @@
 #define SHM_NAME "/master-view"
 #define SHM_SIZE 1024
 
+#define SEM1_NAME "/sem_empty"
+#define SEM2_NAME "/sem_full"
+
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>

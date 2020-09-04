@@ -4,7 +4,11 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <stdlib.h>
 #include <unistd.h>
+#include <semaphore.h>
 
+#define SEM1_NAME "/sem_empty"
+
+#define SEM2_NAME "/sem_full"
 int main(int argc,char **argv){
     char * shm_path=malloc(sizeof(char)*20);
     int shm_fd,aux;
@@ -24,6 +28,8 @@ int main(int argc,char **argv){
         perror("fstat");
         exit(EXIT_FAILURE);
     }
+    sem_t * empty = sem_open(SEM1_NAME, O_RDWR);
+    sem_t *full = sem_open(SEM2_NAME, O_RDWR);
     //vamos a leer hasta EOF
     //Al pasar NULL como primer parámetro, el kernel se encarga de buscar lugar donde mapear
     base = (char*) mmap(NULL,sb.st_size,PROT_READ,MAP_SHARED,shm_fd,0);
