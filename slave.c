@@ -11,7 +11,7 @@
 #include <errno.h>
 
 #define MAX_SIZE_FOR_MINISAT_OUTPUT 2048
-#define MAX_SIZE_FOR_GREP_OUTPUT 512
+#define MAX_SIZE_FOR_GREP_OUTPUT 1024
 
 
 
@@ -61,7 +61,7 @@ void process(char *input, char *output, int slave_id) {
     //printf("@S%d: %s\n", slave_id, input);
     int pipe_fd_sat_grep[2];
     int pipe_fd_grep_slave[2];
-    char * inputFromGrep = malloc(MAX_SIZE_FOR_GREP_OUTPUT);
+    char * outputForMaster = malloc(MAX_SIZE_FOR_GREP_OUTPUT);
     pid_t forkMinisat, forkGrep;  
 
 	char * token = malloc(100 * sizeof(char)); // token almacena nombre de archivo cnf
@@ -134,11 +134,10 @@ void process(char *input, char *output, int slave_id) {
 	            perror("dup");
 	            exit(EXIT_FAILURE);
 	        }
-
 	        
 
 
-			char *args[] = {"grep", "-o", "-e", "Number of .*[0-9]+", "-e", "CPU time.*", "-e", ".*SATISFIABLE", NULL};
+			char *args[] = {"grep", "-o", "-e", "Number of .*[0-9]\\+", "-e", "CPU time.*", "-e", ".*SATISFIABLE", NULL};
 			if (execv("/bin/grep", args) < 0) {
 	        	perror("exec");
 	            exit(EXIT_FAILURE);
@@ -156,34 +155,38 @@ void process(char *input, char *output, int slave_id) {
 		close(pipe_fd_sat_grep[0]);
 		close(pipe_fd_grep_slave[1]);
 
-		read(pipe_fd_grep_slave[0], inputFromGrep, MAX_SIZE_FOR_GREP_OUTPUT);
+
+		//Comenzamos a cosntruir el csv output
+		strcat(outputForMaster, token); //Primer columna es el nombre del archivo
+		strcat(outputForMaster, ",");
+
+		size_t auxSize = 50;
+		FILE * fp = fdopen(pipe_fd_grep_slave[0], "r");
+		char * aux = malloc(auxSize); //Aquí va guardando getline
+		while(getline(&aux, &auxSize, fp) > 0) {
+			strcat(outputForMaster, aux);
+			outputForMaster[strlen(outputForMaster)-1] = ',';
+		}
+
+		pid_t slave_pid = getpid();  //Finalmente añadimos pid
+		char str_for_pid[15];
+		sprintf(str_for_pid, "%d", slave_pid);
+		strcat(outputForMaster, "Slave PID: "); //Amigable para usuario
+		strcat(outputForMaster, str_for_pid);
+		strcat(outputForMaster, "\n");
+		fclose(fp);
+
 		close(pipe_fd_grep_slave[0]);
 
 		int intresult;
 		waitpid(forkMinisat, &intresult, WUNTRACED); //Esperamos a que termine el minisat
 		waitpid(forkGrep, &intresult, WUNTRACED); //Esperamos a que termine el grep
-		printf(inputFromGrep);
 
-		/*
-
-		FILE * fp = fdopen(pipe_fd_grep_slave[0], "r");
-		while(getline(&inputFromGrep, &inputFromGrepSize, fp) > 0) {
-			strcat(outputForMaster, inputFromGrep);
-			strcat(outputForMaster, ",");
-		}
-		outputForMaster[strlen(outputForMaster)-1] = '\n';
-
-		if(fclose(fp) != 0) {
-			fwrite("Error 9", 1, strlen("Error 9"), f_debug);
-    		fwrite("\n", 1, 1, f_debug);	
-			perror("fclose");
-			exit(EXIT_FAILURE);
-		} */
+		printf(outputForMaster);
 
 
 		token = strtok(NULL, ",");
 	}
 
-	free(inputFromGrep);
 
 }
