@@ -61,19 +61,20 @@ int main(int argc,char **argv){
     } */
     
     char file_data [512];                    
+    int pos =0;
     while(1){
-        int pos;
-        for( pos=0; base[pos]!='\n'; pos++){
+        for( int i=0; base[pos%SHM_SIZE]!='\n'; pos++){
             sem_wait(read_bytes);
-            if(base[pos]==EOT)
+            if(base[pos%SHM_SIZE]==EOT)
                 break;
-            file_data[pos]=base[pos]; 
+            file_data[i++]=base[pos %SHM_SIZE]; 
             sem_post(write_bytes);   
         }
+        pos++;
         char toPrint [1024];
         parse (file_data,toPrint);
         printf("%s\n",toPrint);
-        if(base[pos]==EOT){
+        if(base[(pos-1) % SHM_SIZE]==EOT){
             // Finalizar proceso view
             printf("Proceso vista terminando, el master ya no va a escribir\n");
             exit(0);
