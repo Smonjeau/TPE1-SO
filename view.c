@@ -1,4 +1,14 @@
+
+#include <stdio.h>
+#include <sys/mman.h>
+#include <sys/stat.h>        
+#include <fcntl.h>           
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <semaphore.h>
 #include "master_view.h"
+#include <string.h>
 
 void parse (char * source, char * destiny);
 
@@ -7,7 +17,7 @@ void handle_error(char * msg);
 
 int main(int argc,char **argv){
 
-    int shm_fd; //aux;
+    int shm_fd; 
     char * base;
     struct stat sb;
 
@@ -51,36 +61,37 @@ int main(int argc,char **argv){
     } */
     
     char file_data [512];                    
-    int index = 0;
-    int aux =0;
     while(1){
-     
-        for(int pos=0; base[pos]!='\n'; pos++){
+        int pos;
+        for( pos=0; base[pos]!='\n'; pos++){
             sem_wait(read_bytes);
+            if(base[pos]==EOT)
+                break;
             file_data[pos]=base[pos]; 
             sem_post(write_bytes);   
         }
         char toPrint [1024];
         parse (file_data,toPrint);
         printf("%s\n",toPrint);
-    
+        if(base[pos]==EOT){
+            // Finalizar proceso view
+            printf("Proceso vista terminando, el master ya no va a escribir\n");
+            exit(0);
+        }
     }    
     return 0;
 }
 
 void parse(char * source, char * destiny){
     int i=0;
-    int buff_index=0;
-    printf("PARSEANDO ANDO\n");
-    char aux [6][21] = {"File name: ","Number of clauses: ", "Number of variables: ", "Result: ", "Proccessing time: ", "Slave pid: " };
+    char aux [6][21] = {"File name:","Number of clauses:","Number of variables:","Result:","Proccessing time:","Slave pid:"};
     if(*source == '0'){
         strcpy(destiny,source +2); //El msj de error es el segundo elemento del csv
-        
     }
     else{
         char * token = strtok(source+2,",");
         while(token != NULL){
-            destiny += sprintf(destiny,"%s%s\n",aux[i++],token);
+            destiny += sprintf(destiny,"%s %s\n",aux[i++],token);
             token = strtok(NULL,",");
         }
     }
