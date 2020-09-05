@@ -1,18 +1,9 @@
-#include <stdio.h>
-#include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
-#include <stdlib.h>
-#include <unistd.h>
-#include <semaphore.h>
+#include "master_view.h"
 
-#define SEM1_NAME "/write_bytes"
-
-#define SEM2_NAME "/read_bytes"
-
-void proccess_byte(char c, char * buffer);
+void parse (char * source, char * destiny);
 
 void handle_error(char * msg);
+
 
 int main(int argc,char **argv){
 
@@ -32,8 +23,8 @@ int main(int argc,char **argv){
         handle_error("fstat");
     }
 
-    sem_t * write_bytes = sem_open(SEM1_NAME, O_RDWR);
-    sem_t * read_bytes= sem_open(SEM2_NAME, O_RDWR);
+    sem_t * write_bytes = sem_open(SEM_WRITE_BYTES, O_RDWR);
+    sem_t * read_bytes= sem_open(SEM_READ_BYTES, O_RDWR);
 
     if(write_bytes==SEM_FAILED){
         handle_error("sem_open for write bytes sem");
@@ -58,14 +49,44 @@ int main(int argc,char **argv){
         fprintf(stderr, "Could not write everything\n");
         exit(EXIT_FAILURE);
     } */
-    // char local_buffer [512];
+    
+    char file_data [512];                    
     int index = 0;
+    int aux =0;
     while(1){
-        sem_wait(read_bytes);
-        printf("%c",base[index++]); 
-        sem_post(write_bytes);   
+     
+        for(int pos=0; base[pos]!='\n'; pos++){
+            sem_wait(read_bytes);
+            file_data[pos]=base[pos]; 
+            sem_post(write_bytes);   
+        }
+        char toPrint [1024];
+        parse (file_data,toPrint);
+        printf("%s\n",toPrint);
+    
     }    
     return 0;
+}
+
+void parse(char * source, char * destiny){
+    int i=0;
+    int buff_index=0;
+    printf("PARSEANDO ANDO\n");
+    char aux [6][21] = {"File name: ","Number of clauses: ", "Number of variables: ", "Result: ", "Proccessing time: ", "Slave pid: " };
+    if(*source == '0'){
+        strcpy(destiny,source +2); //El msj de error es el segundo elemento del csv
+        
+    }
+    else{
+        char * token = strtok(source+2,",");
+        while(token != NULL){
+            destiny += sprintf(destiny,"%s%s\n",aux[i++],token);
+            token = strtok(NULL,",");
+        }
+    }
+  
+    return ;
+
 }
 
 void handle_error(char * msg){
