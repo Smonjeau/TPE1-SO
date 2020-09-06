@@ -9,14 +9,14 @@
 #include "master_view.h"
 #include <string.h>
 
-#define SHM_SIZE 1024
-#define SEM_WRITE_BYTES "/write_bytes"
-#define SEM_READ_BYTES "/read_bytes"
 
 
-void proccess_byte(char c, char * buffer);
 
-void handle_error(char * msg);
+
+
+#define handle_error(msg) \
+                do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
 
 void finish(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes);
 
@@ -54,25 +54,32 @@ int main(int argc,char **argv){
     int pos = 0;
     while(1){
         
-        char file_data[512]={0}; int file_pos=0;
+    
 
         while(1){
             sem_wait(read_bytes);
 
             char c = base[pos++ % SHM_SIZE];
             
-            if(c == '\n')
+            if(c == '\n'){
+                putchar(c);
                 break;
+            }
 
-            if(c == 4)
+            else if(c == EOT)
                 finish(base, read_bytes, write_bytes);
             
-            file_data[file_pos++] = c;
+            
+            else if (c==',') {
+                putchar('\n');
+            }
+            else
+                putchar(c);
 
             sem_post(write_bytes);
         }
 
-        printf("%s\n", file_data);
+       
 
     }    
 
@@ -80,33 +87,45 @@ int main(int argc,char **argv){
 }
 
 
-void handle_error(char * msg){
-    perror(msg);
-    exit(EXIT_FAILURE);
-}
-
 
 void finish(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes){
 
     // Close shared memory
 
     if(munmap(shm_base, SHM_SIZE) == -1){
-        perror("munmap");
-        exit(1);
+        handle_error("munmap");
     }
 
     // Close semaphores
 
     if(sem_close(sem_read_bytes) == -1){
-        perror("closing read_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("close read_bytes sem");
     }
 
     if(sem_close(sem_write_bytes) == -1){
-        perror("closing write_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("close write_bytes sem");
+
     }
 
-    exit(0);
+    exit(EXIT_SUCCESS);
 
 }
+
+/* 
+        sem_wait(read_bytes);
+        for(i=0 ;base[pos%SHM_SIZE]!='\n'; pos++,i++){
+            sem_wait(read_bytes);
+            if(i==0)
+                putchar('\n');
+            if ((c=base[pos%SHM_SIZE]) ==EOT){
+                printf("\nme boi\n");
+                exit(0);   
+            }
+            else if (c==',' || (c==0 ) )
+                putchar('\n');
+            else 
+                putchar(c);
+            sem_post(write_bytes);
+        }
+        sem_post(write_bytes);
+        pos++; */
