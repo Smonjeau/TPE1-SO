@@ -8,8 +8,8 @@
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
 #define MAX_MESSAGE_LEN 1000                   // Max extension of messages between master/slaves
 
-#define SHM_NAME "master-view"               // Master-view shared memory name
-#define DELAY_FOR_VIEW 0
+#define SHM_NAME "/master-view"               // Master-view shared memory name
+#define DELAY_FOR_VIEW 2
 
 #define LOGFILE_NAME "resultados.txt"
 
@@ -75,14 +75,12 @@ int main(int argc, char **argv){
     int sm_fds[SLAVES_QTY][2];      // Slave -> Master pipes
     int ms_fds[SLAVES_QTY][2];      // Master -> Slave pipes
     
-    
+   
     setup();
 
     create_slaves(sm_fds, ms_fds);
     
     handle_slaves(sm_fds, ms_fds, argc-1, argv+1);
-
-    kill_slaves();
 
     finish();
 
@@ -101,7 +99,7 @@ void setup(){
 
     // Setup shared memory
 
-    int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
+     int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if(shm_fd == -1){
         handle_error("Opening shared memory");
     }
@@ -149,8 +147,7 @@ void setup(){
 
 
 void sigint_handler(int sig){
-
-    kill_slaves();
+    
     finish();
 
 }
@@ -313,6 +310,8 @@ void kill_slaves(){
 
 void finish(){
 
+    
+    kill_slaves();
     // Close log file
 
     if(fclose(logfile_fd) == -1){
@@ -338,7 +337,7 @@ void finish(){
     if(sem_close(sem_write_bytes) == -1){
         handle_error("Closing write_bytes semaphore");
     }
-
+    
     exit(EXIT_SUCCESS);
 
 }

@@ -29,8 +29,9 @@
                                      PROTOTYPES
 -------------------------------------------------------------------------------------------- */
 
-void setup(char *shm_path);
+void setup();
 
+void read_buffer();
 void sigint_handler(int sig);
 
 void finish();
@@ -42,7 +43,7 @@ void finish();
 // This variables have been made global because they are needed by SIGINT handler, wich
 // can't receive custom parameters
 
-char *base; sem_t *read_bytes; sem_t *write_bytes;
+char *base; sem_t *read_bytes; sem_t *write_bytes; char shm_path[MAX_SHM_PATH_LENGTH]={0};
 
 /* --------------------------------------------------------------------------------------------
                                      FUNCTIONS
@@ -52,7 +53,7 @@ int main(int argc,char **argv){
 
     // Get the name of shared memory
 
-    char shm_path[MAX_SHM_PATH_LENGTH]={0};
+    //shm_path[MAX_SHM_PATH_LENGTH]={0};
 
     if(argc < 2){
         read(STDIN_FILENO, shm_path, MAX_SHM_PATH_LENGTH);
@@ -63,42 +64,15 @@ int main(int argc,char **argv){
     
     // Set up shared memory, semaphores and sigint handler
     
-    setup(shm_path);
+    setup();
 
-    // Read shared memory buffer
-
-    int pos = 0;
-    while(1){
-        sem_wait(read_bytes);
-
-        char c = base[pos++ % SHM_SIZE];
-        
-        if(c == '\n'){
-            putchar(c);
-            continue;
-        }
-
-        else if(c == EOT)
-            finish(base, read_bytes, write_bytes);
-        
-        else if (c==',')
-            putchar('\n');
-        
-        else
-            putchar(c);
-
-        sem_post(write_bytes);
-    } 
+    read_buffer();
 
 
-    // Close shared memory and semaphores
 
-    finish();
 
 }
-
-
-void setup(char *shm_path){
+void setup(){
 
     // Setup shared memory
 
@@ -139,7 +113,31 @@ void setup(char *shm_path){
 
 }
 
+void read_buffer(){
+    int pos = 0;
+    while(1){
+        sem_wait(read_bytes);
 
+        char c = base[pos++ % SHM_SIZE];
+        
+        if(c == '\n'){
+            putchar(c);
+            continue;
+        }
+
+        else if(c == EOT)
+            finish();
+                   
+        else if (c==',')
+            putchar('\n');
+        
+        else
+            putchar(c);
+
+        sem_post(write_bytes);
+    } 
+
+}
 void sigint_handler(int sig){
     finish();
 }
@@ -152,7 +150,9 @@ void finish(){
     if(munmap(base, SHM_SIZE) == -1){
         handle_error("munmap");
     }
-
+    if(shm_unlink(shm_path)==-1)
+        handle_error("shm_unlink");
+        
     // Close semaphores
 
     if(sem_close(read_bytes) == -1){
@@ -162,6 +162,12 @@ void finish(){
     if(sem_close(write_bytes) == -1){
         handle_error("close write_bytes sem");
     }
+    if(sem_unlink(SEM_READ_BYTES)==-1)
+        handle_error("unlink for read bytes sem");
+    if(sem_unlink(SEM_WRITE_BYTES)==-1)
+        handle_error("unlink for write bytes sem");
+
+    
 
     exit(EXIT_SUCCESS);
 
