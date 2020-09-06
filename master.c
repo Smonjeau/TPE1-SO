@@ -73,8 +73,6 @@ int main(int argc, char **argv){
     
     setup_buffer();
 
-    sleep(5);
-
     create_slaves(sm_fds, ms_fds);
     
     handle_slaves(sm_fds, ms_fds, argc-1, argv+1);
@@ -142,7 +140,6 @@ void sigint_handler(int sig){
     printf("\nKilling slaves and closing buffer...\n");
 
     kill_slaves();
-    write_buffer(EOT);
     close_buffer();
 
     exit(0);
@@ -302,6 +299,10 @@ void kill_slaves(){
 
 
 void close_buffer(){
+
+    // Signal view end of transmission
+
+    write_buffer(EOT);
 
     // Close shared memory
 
