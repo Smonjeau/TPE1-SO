@@ -13,6 +13,9 @@
 
 #define LOGFILE_NAME "resultados.txt"
 
+#define handle_error(msg) \
+                do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
 /* --------------------------------------------------------------------------------------------
                                      INCLUDES
 -------------------------------------------------------------------------------------------- */
@@ -48,7 +51,6 @@ void write_buffer(char c);
 void finish();
 
 void sigint_handler(int sig);
-
 
 /* --------------------------------------------------------------------------------------------
                                      GLOBAL VARIABLES
@@ -93,8 +95,7 @@ void setup(){
 
     logfile_fd = fopen(LOGFILE_NAME, "w+");
     if(logfile_fd == NULL){
-        perror("Opening log file");
-        exit(EXIT_FAILURE);
+        handle_error("Opening log file");
     }
 
 
@@ -102,38 +103,32 @@ void setup(){
 
     int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if(shm_fd == -1){
-        perror("Opening shared memory");
-        exit(EXIT_FAILURE);
+        handle_error("Opening shared memory");
     }
 
     if(ftruncate(shm_fd, SHM_SIZE)==-1){
-        perror("Truncating shared memory");
-        exit(EXIT_FAILURE);
+        handle_error("Truncating shared memory");
     }
 
     shm_base = (char *) mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
     if(shm_base == MAP_FAILED){
-        perror("Mapping shared memory");
-        exit(EXIT_FAILURE);
+        handle_error("Mapping shared memory");
     }
 
     if(close(shm_fd) == -1){
-        perror("Closing shared memory file descriptor");
-        exit(EXIT_FAILURE);
+        handle_error("Closing shared memory file descriptor");
     }
 
     // Setup semaphores
 
     sem_read_bytes = sem_open(SEM_READ_BYTES, O_CREAT | O_RDWR, 0666, 0);
     if(sem_read_bytes == SEM_FAILED){
-        perror("Opening read_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("Opening read_bytes semaphore");
     }
 
     sem_write_bytes = sem_open(SEM_WRITE_BYTES, O_CREAT | O_RDWR, 0666, SHM_SIZE);
     if(sem_write_bytes == SEM_FAILED){
-        perror("Opening write_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("Opening write_bytes semaphore");
     }
 
     // Set up SIGINT handler
@@ -172,7 +167,7 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2]){
 
         if(npid == -1){
 
-            perror("Forking master process");
+            handle_error("Forking master process");
 
         }else if(npid == 0){
 
@@ -187,7 +182,7 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2]){
             char *slave_args[] = {"./slave.out", wr_fd_str, rd_fd_str, slave_id_str, NULL};
             execv("./slave.out", slave_args);
 
-            perror("Executing a slave");
+            handle_error("Executing a slave");
 
         }else{
 
@@ -230,7 +225,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
         switch(available_fds){
 
             case -1:
-                perror("Selecting available file descriptors");
+                handle_error("Selecting available file descriptors");
                 break;
 
             default:
@@ -321,8 +316,7 @@ void finish(){
     // Close log file
 
     if(fclose(logfile_fd) == -1){
-        perror("Closing log file");
-        exit(EXIT_FAILURE);
+        handle_error("Closing log file");
     }
 
     // Signal view end of transmission
@@ -332,20 +326,17 @@ void finish(){
     // Close shared memory
 
     if(munmap(shm_base, SHM_SIZE) == -1){
-        perror("Unmapping shared memory");
-        exit(EXIT_FAILURE);
+        handle_error("Unmapping shared memory");
     }
 
     // Close semaphores
 
     if(sem_close(sem_read_bytes) == -1){
-        perror("Closing read_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("Closing read_bytes semaphore");
     }
 
     if(sem_close(sem_write_bytes) == -1){
-        perror("Closing write_bytes semaphore");
-        exit(EXIT_FAILURE);
+        handle_error("Closing write_bytes semaphore");
     }
 
     exit(EXIT_SUCCESS);

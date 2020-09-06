@@ -1,3 +1,17 @@
+/* --------------------------------------------------------------------------------------------
+                                     DEFINITIONS
+-------------------------------------------------------------------------------------------- */
+
+#define handle_error(msg) \
+                do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define MAX_SHM_PATH_LENGTH 50
+
+
+/* --------------------------------------------------------------------------------------------
+                                     INCLUDES
+-------------------------------------------------------------------------------------------- */
+
 #include <stdio.h>
 #include <sys/mman.h>
 #include <sys/stat.h>        
@@ -11,11 +25,9 @@
 #include <string.h>
 
 
-#define handle_error(msg) \
-                do { perror(msg); exit(EXIT_FAILURE); } while (0)
-
-#define MAX_SHM_PATH_LENGTH 50
-
+/* --------------------------------------------------------------------------------------------
+                                     PROTOTYPES
+-------------------------------------------------------------------------------------------- */
 
 void setup(char *shm_path);
 
@@ -23,11 +35,22 @@ void sigint_handler(int sig);
 
 void finish();
 
+/* --------------------------------------------------------------------------------------------
+                                     GLOBAL VARIABLES
+-------------------------------------------------------------------------------------------- */
+
+// This variables have been made global because they are needed by SIGINT handler, wich
+// can't receive custom parameters
 
 char *base; sem_t *read_bytes; sem_t *write_bytes;
 
+/* --------------------------------------------------------------------------------------------
+                                     FUNCTIONS
+-------------------------------------------------------------------------------------------- */
 
 int main(int argc,char **argv){
+
+    // Get the name of shared memory
 
     char shm_path[MAX_SHM_PATH_LENGTH]={0};
 
@@ -37,36 +60,38 @@ int main(int argc,char **argv){
         memccpy(shm_path, argv[1], 0, MAX_SHM_PATH_LENGTH);
     }
 
+    
+    // Set up shared memory, semaphores and sigint handler
+    
     setup(shm_path);
+
+    // Read shared memory buffer
 
     int pos = 0;
     while(1){
+        sem_wait(read_bytes);
 
-        while(1){
-            sem_wait(read_bytes);
+        char c = base[pos++ % SHM_SIZE];
+        
+        if(c == '\n'){
+            putchar(c);
+            continue;
+        }
 
-            char c = base[pos++ % SHM_SIZE];
-            
-            if(c == '\n'){
-                putchar(c);
-                break;
-            }
+        else if(c == EOT)
+            finish(base, read_bytes, write_bytes);
+        
+        else if (c==',')
+            putchar('\n');
+        
+        else
+            putchar(c);
 
-            else if(c == EOT)
-                finish(base, read_bytes, write_bytes);
-            
-            
-            else if (c==',') {
-                putchar('\n');
-            }
-            else
-                putchar(c);
+        sem_post(write_bytes);
+    } 
 
-            sem_post(write_bytes);
-        }   
 
-    }
-
+    // Close shared memory and semaphores
 
     finish();
 
