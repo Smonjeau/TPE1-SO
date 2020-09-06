@@ -6,55 +6,41 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <semaphore.h>
+#include <signal.h>
 #include "master_view.h"
 #include <string.h>
-
-
-
-
 
 
 #define handle_error(msg) \
                 do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
+#define MAX_SHM_PATH_LENGTH 50
 
-void finish(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes);
+
+void setup(char *shm_path);
+
+void sigint_handler(int sig);
+
+void finish();
+
+
+char *base; sem_t *read_bytes; sem_t *write_bytes;
 
 
 int main(int argc,char **argv){
 
-    char * shm_path = argv[1];
-        
-    int shm_fd= shm_open(shm_path,O_RDONLY,0666);
-    if(shm_fd==-1){
-        handle_error("shm_open");
+    char shm_path[MAX_SHM_PATH_LENGTH]={0};
+
+    if(argc < 2){
+        read(STDIN_FILENO, shm_path, MAX_SHM_PATH_LENGTH);
+    }else{
+        memccpy(shm_path, argv[1], 0, MAX_SHM_PATH_LENGTH);
     }
 
-    struct stat sb;
-    if (fstat(shm_fd, &sb) == -1){
-        handle_error("fstat");
-    }
-
-    sem_t * write_bytes = sem_open(SEM_WRITE_BYTES, O_RDWR);
-    sem_t * read_bytes= sem_open(SEM_READ_BYTES, O_RDWR);
-
-    if(write_bytes==SEM_FAILED){
-        handle_error("sem_open for write bytes sem");
-    }
-
-    if(read_bytes==SEM_FAILED){
-        handle_error("sem_open for read bytes sem");
-    }
-
-    char * base = (char*) mmap(NULL,sb.st_size,PROT_READ,MAP_SHARED,shm_fd,0);
-    if(base == MAP_FAILED){
-        handle_error("mmap");
-    }
+    setup(shm_path);
 
     int pos = 0;
     while(1){
-        
-    
 
         while(1){
             sem_wait(read_bytes);
@@ -77,55 +63,81 @@ int main(int argc,char **argv){
                 putchar(c);
 
             sem_post(write_bytes);
-        }
+        }   
 
-       
+    }
 
-    }    
 
-    return 0;
+    finish();
+
 }
 
 
+void setup(char *shm_path){
 
-void finish(char *shm_base, sem_t *sem_read_bytes, sem_t *sem_write_bytes){
+    // Setup shared memory
+
+    int shm_fd= shm_open(shm_path,O_RDONLY,0666);
+    if(shm_fd==-1){
+        handle_error("shm_open");
+    }
+
+    base = (char*) mmap(NULL,SHM_SIZE,PROT_READ,MAP_SHARED,shm_fd,0);
+    if(base == MAP_FAILED){
+        handle_error("mmap");
+    }
+
+    if(close(shm_fd) == -1){
+        handle_error("close shm fd");
+    }
+
+    // Setup semaphores
+
+    write_bytes = sem_open(SEM_WRITE_BYTES, O_RDWR);
+    read_bytes= sem_open(SEM_READ_BYTES, O_RDWR);
+
+    if(write_bytes==SEM_FAILED){
+        handle_error("sem_open for write bytes sem");
+    }
+
+    if(read_bytes==SEM_FAILED){
+        handle_error("sem_open for read bytes sem");
+    }
+
+    // Setup sigint handler
+
+    struct sigaction _sigact;
+    memset(&_sigact, 0, sizeof(_sigact));
+
+    _sigact.sa_handler = sigint_handler;
+    sigaction(SIGINT, &_sigact, NULL);
+
+}
+
+
+void sigint_handler(int sig){
+    finish();
+}
+
+
+void finish(){
 
     // Close shared memory
 
-    if(munmap(shm_base, SHM_SIZE) == -1){
+    if(munmap(base, SHM_SIZE) == -1){
         handle_error("munmap");
     }
 
     // Close semaphores
 
-    if(sem_close(sem_read_bytes) == -1){
+    if(sem_close(read_bytes) == -1){
         handle_error("close read_bytes sem");
     }
 
-    if(sem_close(sem_write_bytes) == -1){
+    if(sem_close(write_bytes) == -1){
         handle_error("close write_bytes sem");
-
     }
 
     exit(EXIT_SUCCESS);
 
 }
-
-/* 
-        sem_wait(read_bytes);
-        for(i=0 ;base[pos%SHM_SIZE]!='\n'; pos++,i++){
-            sem_wait(read_bytes);
-            if(i==0)
-                putchar('\n');
-            if ((c=base[pos%SHM_SIZE]) ==EOT){
-                printf("\nme boi\n");
-                exit(0);   
-            }
-            else if (c==',' || (c==0 ) )
-                putchar('\n');
-            else 
-                putchar(c);
-            sem_post(write_bytes);
-        }
-        sem_post(write_bytes);
-        pos++; */

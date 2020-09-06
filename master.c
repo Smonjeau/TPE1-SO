@@ -8,8 +8,10 @@
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
 #define MAX_MESSAGE_LEN 1000                   // Max extension of messages between master/slaves
 
-#define SHM_NAME "/master-view"               // Master-view shared memory name
-#define DELAY_FOR_VIEW 4
+#define SHM_NAME "master-view"               // Master-view shared memory name
+#define DELAY_FOR_VIEW 0
+
+#define LOGFILE_NAME "resultados.txt"
 
 /* --------------------------------------------------------------------------------------------
                                      INCLUDES
@@ -33,7 +35,7 @@
                                      PROTOTYPES
 -------------------------------------------------------------------------------------------- */
 
-void setup_buffer();
+void setup();
 
 void create_slaves(int sm_fds[][2], int ms_fds[][2]);
 
@@ -43,7 +45,7 @@ void kill_slaves();
 
 void write_buffer(char c);
 
-void close_buffer();
+void finish();
 
 void sigint_handler(int sig);
 
@@ -56,7 +58,7 @@ void sigint_handler(int sig);
 // can't receive custom parameters
 
 char *shm_base=NULL; sem_t *sem_read_bytes=NULL, *sem_write_bytes=NULL;
-int slave_pids[SLAVES_QTY];
+int slave_pids[SLAVES_QTY]; FILE *logfile_fd;
 
 /* --------------------------------------------------------------------------------------------
                                      FUNCTIONS
@@ -72,7 +74,7 @@ int main(int argc, char **argv){
     int ms_fds[SLAVES_QTY][2];      // Master -> Slave pipes
     
     
-    setup_buffer();
+    setup();
 
     create_slaves(sm_fds, ms_fds);
     
@@ -80,12 +82,21 @@ int main(int argc, char **argv){
 
     kill_slaves();
 
-    close_buffer();
+    finish();
 
 }
 
 
-void setup_buffer(){
+void setup(){
+    
+    // Create log file
+
+    logfile_fd = fopen(LOGFILE_NAME, "w+");
+    if(logfile_fd == NULL){
+        perror("Opening log file");
+        exit(EXIT_FAILURE);
+    }
+
 
     // Setup shared memory
 
@@ -134,21 +145,18 @@ void setup_buffer(){
     sigaction(SIGINT, &_sigact, NULL);
 
 
-    // Wait some time for the view to connect
+    // Wait some time for the view to connect and print shm name
 
     sleep(DELAY_FOR_VIEW);
+    printf("%s", SHM_NAME);
 
 }
 
 
 void sigint_handler(int sig){
 
-    // printf("\nKilling slaves and closing buffer...\n");
-
     kill_slaves();
-    close_buffer();
-
-    exit(0);
+    finish();
 
 }
 
@@ -254,7 +262,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                                 outpos += sprintf(output+outpos, ",%s", files[filen++]);
                             }
 
-                           // printf("For S%d: %s\n", i, output);
+                        //    printf("For S%d: %s\n", i, output);
 
                             write(ms_fds[i][1], output, MAX_MESSAGE_LEN);
                             pending_jobs += 1;
@@ -267,9 +275,11 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
                             for(int input_pos=0; input[input_pos] != 0; input_pos++){
                                 write_buffer(input[input_pos]);
+                                fputc(input[input_pos], logfile_fd);
                             }
 
                             write_buffer('\n');
+                            fputc('\n', logfile_fd);
 
                             write(ms_fds[i][1], "ACK", 4);
                             pending_jobs -= 1;
@@ -306,7 +316,14 @@ void kill_slaves(){
 }
 
 
-void close_buffer(){
+void finish(){
+
+    // Close log file
+
+    if(fclose(logfile_fd) == -1){
+        perror("Closing log file");
+        exit(EXIT_FAILURE);
+    }
 
     // Signal view end of transmission
 
@@ -315,20 +332,22 @@ void close_buffer(){
     // Close shared memory
 
     if(munmap(shm_base, SHM_SIZE) == -1){
-        perror("munmap");
-        exit(1);
+        perror("Unmapping shared memory");
+        exit(EXIT_FAILURE);
     }
 
     // Close semaphores
 
     if(sem_close(sem_read_bytes) == -1){
-        perror("closing read_bytes semaphore");
+        perror("Closing read_bytes semaphore");
         exit(EXIT_FAILURE);
     }
 
     if(sem_close(sem_write_bytes) == -1){
-        perror("closing write_bytes semaphore");
+        perror("Closing write_bytes semaphore");
         exit(EXIT_FAILURE);
     }
+
+    exit(EXIT_SUCCESS);
 
 }
