@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
+#include <sys/stat.h>        
+#include <fcntl.h>           
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
 #include <semaphore.h>
+#include "master_view.h"
+#include <string.h>
 
 #define SHM_SIZE 1024
-#define SEM1_NAME "/write_bytes"
-#define SEM2_NAME "/read_bytes"
+#define SEM_WRITE_BYTES "/write_bytes"
+#define SEM_READ_BYTES "/read_bytes"
 
 
 void proccess_byte(char c, char * buffer);
@@ -32,8 +35,8 @@ int main(int argc,char **argv){
         handle_error("fstat");
     }
 
-    sem_t * write_bytes = sem_open(SEM1_NAME, O_RDWR);
-    sem_t * read_bytes= sem_open(SEM2_NAME, O_RDWR);
+    sem_t * write_bytes = sem_open(SEM_WRITE_BYTES, O_RDWR);
+    sem_t * read_bytes= sem_open(SEM_READ_BYTES, O_RDWR);
 
     if(write_bytes==SEM_FAILED){
         handle_error("sem_open for write bytes sem");
