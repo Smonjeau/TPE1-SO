@@ -6,9 +6,10 @@
 #define FILES_TO_DELEGATE 1                   // Number of files given to each slave per request
 
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
-#define MAX_MESSAGE_LEN 100                   // Max extension of messages between master/slaves
+#define MAX_MESSAGE_LEN 1000                   // Max extension of messages between master/slaves
 
 #define SHM_NAME "/master-view"               // Master-view shared memory name
+#define DELAY_FOR_VIEW 4
 
 /* --------------------------------------------------------------------------------------------
                                      INCLUDES
@@ -132,12 +133,17 @@ void setup_buffer(){
     _sigact.sa_handler = sigint_handler;
     sigaction(SIGINT, &_sigact, NULL);
 
+
+    // Wait some time for the view to connect
+
+    sleep(DELAY_FOR_VIEW);
+
 }
 
 
 void sigint_handler(int sig){
 
-    printf("\nKilling slaves and closing buffer...\n");
+    // printf("\nKilling slaves and closing buffer...\n");
 
     kill_slaves();
     close_buffer();
@@ -255,7 +261,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
                             // Slave sent a job response
 
-                            printf("@M - S%d: %s\n", i, input);
+                            // printf("@M - S%d: %s\n", i, input);
 
                             for(int input_pos=0; input[input_pos] != 0; input_pos++){
                                 write_buffer(input[input_pos]);

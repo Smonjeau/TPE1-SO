@@ -1,4 +1,4 @@
-#define MAX_MESSAGE_LEN 100
+#define MAX_MESSAGE_LEN 1000
 
 #define _GNU_SOURCE
 
@@ -24,8 +24,6 @@ int main(int argc, char ** argv){
     int rd_fd = atoi(argv[2]);
     int slave_id = atoi(argv[3]);
 
-
-
     while(1){
 
         // Request a file
@@ -50,18 +48,19 @@ int main(int argc, char ** argv){
         }
 
     }
+
     exit(0);
     
 }
 
 
-void process(char *input, char *output, int slave_id) {
+void process(char *input, char *outputForMaster, int slave_id) {
 	// Split the input and process each path, then return all answers in CSV format
 
     //printf("@S%d: %s\n", slave_id, input);
     int pipe_fd_sat_grep[2];
     int pipe_fd_grep_slave[2];
-    char * outputForMaster = malloc(MAX_SIZE_FOR_GREP_OUTPUT);
+    //char * outputForMaster = malloc(MAX_SIZE_FOR_GREP_OUTPUT);
     pid_t forkMinisat, forkGrep;  
 
 	char * token = malloc(100 * sizeof(char)); // token almacena nombre de archivo cnf
@@ -92,7 +91,7 @@ void process(char *input, char *output, int slave_id) {
 			
 
 			char *args[] = {"minisat", token, NULL};
-			printf("proximo: %s\n", token);
+			// printf("proximo: %s\n", token);
 			
 	        if (execv("/usr/bin/minisat", args) < 0) {
 	        	perror("exec");
@@ -182,8 +181,7 @@ void process(char *input, char *output, int slave_id) {
 		waitpid(forkMinisat, &intresult, WUNTRACED); //Esperamos a que termine el minisat
 		waitpid(forkGrep, &intresult, WUNTRACED); //Esperamos a que termine el grep
 
-		printf(outputForMaster);
-
+		// printf(outputForMaster);
 
 		token = strtok(NULL, ",");
 	}
