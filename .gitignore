@@ -1,0 +1,4 @@
+*.o
+*.cnf
+_others/
+docker.sh
