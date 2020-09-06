@@ -36,7 +36,7 @@ int main(int argc, char ** argv){
         if(strcmp(input, "EMPTY")!=0){
             // Process the files
         	
-            char output[MAX_MESSAGE_LEN];
+            char output[MAX_MESSAGE_LEN]={0};
             process(input, output, slave_id);
 
             // Return the result            
