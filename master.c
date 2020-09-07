@@ -258,7 +258,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                             int outpos = sprintf(output, "%s", files[filen++]);
 
                             int files_to_delegate;
-                            if(singlefile_req[i] == 1){
+                            if(singlefile_req[i] == 1 || filen<INITIAL_FILES_PER_SLAVE){
                                 files_to_delegate = 1;
                             }else{
                                 files_to_delegate = INITIAL_FILES_PER_SLAVE;
