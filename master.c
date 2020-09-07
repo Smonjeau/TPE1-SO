@@ -5,7 +5,7 @@
 -------------------------------------------------------------------------------------------- */
 
 #define SLAVES_QTY 3                          // Number of slaves to create (fixed amount)
-#define FILES_TO_DELEGATE 1                   // Number of files given to each slave per request
+#define INITIAL_FILES_PER_SLAVE 2             // Number of files given to each slave per request
 
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
 #define MAX_MESSAGE_LEN 1000                  // Max extension of messages between master/slaves
@@ -203,6 +203,8 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
     // The master must listen to slaves until there are no more files nor pending jobs
 
+    static int singlefile_req[SLAVES_QTY] = {0};    // Initially, multiple files are delegated
+
     int filen=0, pending_jobs=0;
     while(filen<nfiles || pending_jobs>0){
 
@@ -255,7 +257,15 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                             char output[MAX_MESSAGE_LEN] = {0};
                             int outpos = sprintf(output, "%s", files[filen++]);
 
-                            int last_filen = filen+FILES_TO_DELEGATE-1;
+                            int files_to_delegate;
+                            if(singlefile_req[i] == 1){
+                                files_to_delegate = 1;
+                            }else{
+                                files_to_delegate = INITIAL_FILES_PER_SLAVE;
+                                singlefile_req[i] = 1;
+                            }
+
+                            int last_filen = filen+files_to_delegate-1;
                             while(filen<last_filen && filen<nfiles){
                                 outpos += sprintf(output+outpos, ",%s", files[filen++]);
                             }
