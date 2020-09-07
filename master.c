@@ -8,11 +8,12 @@
 #define FILES_TO_DELEGATE 1                   // Number of files given to each slave per request
 
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
-#define MAX_MESSAGE_LEN 1000                   // Max extension of messages between master/slaves
+#define MAX_MESSAGE_LEN 1000                  // Max extension of messages between master/slaves
 
 #define SHM_NAME "/master-view"               // Master-view shared memory name
 #define NAME_SIZE 12
-#define DELAY_FOR_VIEW 6
+#define DELAY_FOR_VIEW 4                      // When valgrind is used, 2 seconds is not enough
+                                              // for the view to connect
 
 #define LOGFILE_NAME "resultados.txt"
 
