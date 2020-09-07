@@ -21,4 +21,4 @@ make all
 ## Instrucciones de uso
 
 Ejecutar "./master.out [params]" donde [params] es una secuencia de archivos con extensión cnf. En caso de ejecutar master de esta manera, se imprimirá en la salida estándar el nombre de la zona de memoria compartida con la view (shmName). Para ejecutar el proceso vista, escribir "./view.out shmName".
-La otra manera de ejecutar los procesos es mediante un pipe: "./master.out [params] $|$ ./view". 
+La otra manera de ejecutar los procesos es mediante un pipe: "./master.out [params] | ./view". 
