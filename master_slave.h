@@ -1,0 +1,1 @@
+#define MAX_MESSAGE_LEN 1000     // Max extension of messages between master/slaves

@@ -8,10 +8,9 @@
 #define INITIAL_FILES_PER_SLAVE 2             // Number of files given to each slave per request
 
 #define SLAVE_READ_TIMEOUT_USEC 100           // Max time to wait for a slave to write on the pipe
-#define MAX_MESSAGE_LEN 1000                  // Max extension of messages between master/slaves
 
 #define SHM_NAME "/master-view"               // Master-view shared memory name
-#define NAME_SIZE 12
+#define NAME_SIZE 13
 #define DELAY_FOR_VIEW 4                      // When valgrind is used, 2 seconds is not enough
                                               // for the view to connect
 
@@ -25,6 +24,7 @@
 -------------------------------------------------------------------------------------------- */
 
 #include "master_view.h"
+#include "master_slave.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
@@ -74,6 +74,7 @@ int main(int argc, char **argv){
 
     if(argc < 2){
         printf("Usage: ./master f1 ... fn\n");
+        exit(EXIT_FAILURE);
     }
 
     int sm_fds[SLAVES_QTY][2];      // Slave -> Master pipes
@@ -175,12 +176,11 @@ void create_slaves(int sm_fds[][2], int ms_fds[][2]){
             close(sm_fds[i][0]);
             close(ms_fds[i][1]);
 
-            char wr_fd_str[3], rd_fd_str[3], slave_id_str[3];
+            char wr_fd_str[3], rd_fd_str[3];
             sprintf(wr_fd_str, "%d", sm_fds[i][1]);
             sprintf(rd_fd_str, "%d", ms_fds[i][0]);
-            sprintf(slave_id_str, "%d", i);
 
-            char *slave_args[] = {"./slave.out", wr_fd_str, rd_fd_str, slave_id_str, NULL};
+            char *slave_args[] = {"./slave.out", wr_fd_str, rd_fd_str, NULL};
             execv("./slave.out", slave_args);
 
             handle_error("Executing a slave");

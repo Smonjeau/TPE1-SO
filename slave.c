@@ -4,8 +4,6 @@
                                      DEFINITIONS
 -------------------------------------------------------------------------------------------- */
 
-#define MAX_MESSAGE_LEN 1000
-
 #define MAX_SIZE_FOR_MINISAT_OUTPUT 2048
 #define MAX_SIZE_FOR_GREP_OUTPUT 1024
 
@@ -18,6 +16,7 @@
                                      INCLUDES
 -------------------------------------------------------------------------------------------- */
 
+#include "master_slave.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <time.h>
@@ -30,7 +29,7 @@
                                      PROTOTYPES
 -------------------------------------------------------------------------------------------- */
 
-void process(char *input, char *output, int slave_id);
+void process(char *input, char *output);
 
 /* --------------------------------------------------------------------------------------------
                                      FUNCTIONS
@@ -40,7 +39,6 @@ int main(int argc, char ** argv){
 
     int wr_fd = atoi(argv[1]);
     int rd_fd = atoi(argv[2]);
-    int slave_id = atoi(argv[3]);
 
     while(1){
 
@@ -55,7 +53,7 @@ int main(int argc, char ** argv){
             // Process the files
         	
             char output[MAX_MESSAGE_LEN]={0};
-            process(input, output, slave_id);
+            process(input, output);
 
             // Return the result            
             write(wr_fd, output, MAX_MESSAGE_LEN);
@@ -74,7 +72,7 @@ int main(int argc, char ** argv){
 }
 
 
-void process(char *input, char *output, int slave_id) {
+void process(char *input, char *output) {
 	
 	// Split the input and process each path, then return all answers in CSV format
 
