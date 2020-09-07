@@ -12,7 +12,7 @@
 
 #define SHM_NAME "/master-view"               // Master-view shared memory name
 #define NAME_SIZE 12
-#define DELAY_FOR_VIEW 2
+#define DELAY_FOR_VIEW 6
 
 #define LOGFILE_NAME "resultados.txt"
 
@@ -86,6 +86,8 @@ int main(int argc, char **argv){
     handle_slaves(sm_fds, ms_fds, argc-1, argv+1);
 
     finish();
+
+    return 0;
 
 }
 
@@ -218,6 +220,8 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
         // Set read timeout
 
         struct timeval tv;
+        memset(&tv, 0, sizeof(struct timeval));
+
         tv.tv_usec = SLAVE_READ_TIMEOUT_USEC;
         
         // Check available file descriptors
@@ -245,13 +249,13 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                             // Slave requested a job
 
                             if(filen >= nfiles){
-                                write(ms_fds[i][1], "EMPTY", MAX_MESSAGE_LEN);
+                                write(ms_fds[i][1], "EMPTY", 6);
                                 continue;
                             }
 
                             // Create files message for slave
 
-                            char output[MAX_MESSAGE_LEN];
+                            char output[MAX_MESSAGE_LEN] = {0};
                             int outpos = sprintf(output, "%s", files[filen++]);
 
                             int last_filen = filen+FILES_TO_DELEGATE-1;
@@ -259,7 +263,7 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                                 outpos += sprintf(output+outpos, ",%s", files[filen++]);
                             }
 
-                        //    printf("For S%d: %s\n", i, output);
+                            // printf("For S%d: %s\n", i, output);
 
                             write(ms_fds[i][1], output, MAX_MESSAGE_LEN);
                             pending_jobs += 1;

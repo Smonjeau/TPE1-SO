@@ -70,8 +70,7 @@ int main(int argc,char **argv){
 
     read_buffer();
 
-
-
+    return 0;
 
 }
 void setup(){

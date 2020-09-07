@@ -46,7 +46,7 @@ int main(int argc, char ** argv){
 
         // Request files
         
-        write(wr_fd, "REQ", MAX_MESSAGE_LEN);
+        write(wr_fd, "REQ", 4);
 
         char input[MAX_MESSAGE_LEN];
         read(rd_fd, input, MAX_MESSAGE_LEN);
@@ -83,8 +83,7 @@ void process(char *input, char *output, int slave_id) {
 
     pid_t forkMinisat, forkGrep;  
 
-	char * token = malloc(100 * sizeof(char)); // token almacena nombre de archivo cnf
-	token = strtok(input, ",");
+	char * token = strtok(input, ",");
 
 	while(token != NULL) {
 
