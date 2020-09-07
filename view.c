@@ -62,7 +62,6 @@ int main(int argc,char **argv){
     }else{
         memccpy(shm_path, argv[1], 0, MAX_SHM_PATH_LENGTH);
     }
-
     
     // Set up shared memory, semaphores and sigint handler
     
@@ -77,15 +76,21 @@ void setup(){
 
     // Setup shared memory
 
-    int shm_fd= shm_open(shm_path,O_RDONLY,0666);
+    int shm_fd= shm_open(shm_path,O_RDWR,0666);
     if(shm_fd==-1){
         handle_error("shm_open");
     }
 
-    base = (char*) mmap(NULL,SHM_SIZE,PROT_READ,MAP_SHARED,shm_fd,0);
+    base = (char*) mmap(NULL,SHM_SIZE,PROT_READ | PROT_WRITE,MAP_SHARED,shm_fd,0);
     if(base == MAP_FAILED){
         handle_error("mmap");
     }
+
+    // Notify master that view is present
+
+    sprintf(base, "VIEW\n");
+
+    // SHM file descriptor won't be needed any more
 
     if(close(shm_fd) == -1){
         handle_error("close shm fd");

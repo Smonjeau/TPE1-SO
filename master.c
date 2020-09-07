@@ -63,7 +63,7 @@ void sigint_handler(int sig);
 // can't receive custom parameters
 
 char *shm_base=NULL; sem_t *sem_read_bytes=NULL, *sem_write_bytes=NULL;
-int slave_pids[SLAVES_QTY]; FILE *logfile_fd;
+int slave_pids[SLAVES_QTY]; FILE *logfile_fd; int view_present;
 
 /* --------------------------------------------------------------------------------------------
                                      FUNCTIONS
@@ -102,7 +102,7 @@ void setup(){
 
     // Setup shared memory
 
-     int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
+    int shm_fd = shm_open(SHM_NAME, O_CREAT | O_RDWR, 0666);
     if(shm_fd == -1){
         handle_error("Opening shared memory");
     }
@@ -116,26 +116,27 @@ void setup(){
         handle_error("Mapping shared memory");
     }
 
-    if(close(shm_fd) == -1){
-        handle_error("Closing shared memory file descriptor");
-    }
-
     // Setup semaphores
 
     sem_read_bytes = sem_open(SEM_READ_BYTES, O_CREAT | O_RDWR, 0666, 0);
-    if(sem_read_bytes == SEM_FAILED){
+    if(sem_read_bytes == SEM_FAILED)
         handle_error("Opening read_bytes semaphore");
-    }
-
+    
     sem_write_bytes = sem_open(SEM_WRITE_BYTES, O_CREAT | O_RDWR, 0666, SHM_SIZE);
-    if(sem_write_bytes == SEM_FAILED){
+    if(sem_write_bytes == SEM_FAILED)
         handle_error("Opening write_bytes semaphore");
-    }
 
-    // Wait some time for the view to connect and print shm name
+    // Print shm name, wait some seconds for the view, and check if it's present
     
     write(STDOUT_FILENO, SHM_NAME,NAME_SIZE);
     sleep(DELAY_FOR_VIEW);
+    view_present = strcmp(shm_base, "VIEW\n")==0;
+
+    // SHM file descriptor won't be needed any more
+
+    if(close(shm_fd) == -1){
+        handle_error("Closing shared memory file descriptor");
+    }
 
     // Set up SIGINT handler
 
@@ -292,6 +293,9 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
 
 void write_buffer(char c){
+
+    if(view_present == 0)
+        return;
 
     static int buff_pos = 0;
     sem_wait(sem_write_bytes);
