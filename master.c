@@ -1,3 +1,5 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 /* --------------------------------------------------------------------------------------------
                                      DEFINITIONS
 -------------------------------------------------------------------------------------------- */
@@ -9,6 +11,7 @@
 #define MAX_MESSAGE_LEN 1000                   // Max extension of messages between master/slaves
 
 #define SHM_NAME "/master-view"               // Master-view shared memory name
+#define NAME_SIZE 12
 #define DELAY_FOR_VIEW 2
 
 #define LOGFILE_NAME "resultados.txt"
@@ -128,7 +131,9 @@ void setup(){
     if(sem_write_bytes == SEM_FAILED){
         handle_error("Opening write_bytes semaphore");
     }
-
+    
+    write(STDOUT_FILENO, SHM_NAME,NAME_SIZE);
+    sleep(DELAY_FOR_VIEW);
     // Set up SIGINT handler
 
     struct sigaction _sigact;
@@ -140,8 +145,8 @@ void setup(){
 
     // Wait some time for the view to connect and print shm name
 
-    sleep(DELAY_FOR_VIEW);
-    printf("%s", SHM_NAME);
+
+
 
 }
 
@@ -327,6 +332,8 @@ void finish(){
     if(munmap(shm_base, SHM_SIZE) == -1){
         handle_error("Unmapping shared memory");
     }
+    if(shm_unlink(SHM_NAME)==-1)
+        handle_error("shm_unlink");
 
     // Close semaphores
 
@@ -337,6 +344,10 @@ void finish(){
     if(sem_close(sem_write_bytes) == -1){
         handle_error("Closing write_bytes semaphore");
     }
+    if(sem_unlink(SEM_READ_BYTES)==-1)
+        handle_error("unlink for read bytes sem");
+    if(sem_unlink(SEM_WRITE_BYTES)==-1)
+        handle_error("unlink for write bytes sem");    
     
     exit(EXIT_SUCCESS);
 

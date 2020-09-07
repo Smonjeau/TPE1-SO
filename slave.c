@@ -1,3 +1,5 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 /* --------------------------------------------------------------------------------------------
                                      DEFINITIONS
 -------------------------------------------------------------------------------------------- */
@@ -67,7 +69,7 @@ int main(int argc, char ** argv){
 
     }
 
-    exit(0);
+    exit(0); //Nunca va a llegar
     
 }
 
@@ -105,7 +107,7 @@ void process(char *input, char *output, int slave_id) {
 			char *args[] = {"minisat", token, NULL};
 			// printf("proximo: %s\n", token);
 			
-	        if (execv("/usr/bin/minisat", args) < 0) {
+	        if (execvp("minisat", args) < 0) {
 	        	handle_error("Minisat exec");
 	        }
 
@@ -137,7 +139,7 @@ void process(char *input, char *output, int slave_id) {
 
 
 			char *args[] = {"grep", "-o", "-e", "Number of .*[0-9]\\+", "-e", "CPU time.*", "-e", ".*SATISFIABLE", NULL};
-			if (execv("/bin/grep", args) < 0) {
+			if (execvp("grep", args) < 0) {
 	        	handle_error("Grep exec");
 	        }
 	        

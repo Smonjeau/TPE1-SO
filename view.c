@@ -1,3 +1,5 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 /* --------------------------------------------------------------------------------------------
                                      DEFINITIONS
 -------------------------------------------------------------------------------------------- */
@@ -127,7 +129,7 @@ void read_buffer(){
 
         else if(c == EOT)
             finish();
-                   
+
         else if (c==',')
             putchar('\n');
         
@@ -150,8 +152,7 @@ void finish(){
     if(munmap(base, SHM_SIZE) == -1){
         handle_error("munmap");
     }
-    if(shm_unlink(shm_path)==-1)
-        handle_error("shm_unlink");
+
         
     // Close semaphores
 
@@ -162,10 +163,7 @@ void finish(){
     if(sem_close(write_bytes) == -1){
         handle_error("close write_bytes sem");
     }
-    if(sem_unlink(SEM_READ_BYTES)==-1)
-        handle_error("unlink for read bytes sem");
-    if(sem_unlink(SEM_WRITE_BYTES)==-1)
-        handle_error("unlink for write bytes sem");
+
 
     
 
