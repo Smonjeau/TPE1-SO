@@ -31,7 +31,7 @@
                                      PROTOTYPES
 -------------------------------------------------------------------------------------------- */
 
-void setup();
+void setup(char * shm_path);
 
 void read_buffer();
 void sigint_handler(int sig);
@@ -45,7 +45,7 @@ void finish();
 // This variables have been made global because they are needed by SIGINT handler, wich
 // can't receive custom parameters
 
-char *base; sem_t *read_bytes; sem_t *write_bytes; char shm_path[MAX_SHM_PATH_LENGTH]={0};
+char *base; sem_t *read_bytes; sem_t *write_bytes; 
 
 /* --------------------------------------------------------------------------------------------
                                      FUNCTIONS
@@ -55,7 +55,7 @@ int main(int argc,char **argv){
 
     // Get the name of shared memory
 
-    //shm_path[MAX_SHM_PATH_LENGTH]={0};
+    char  shm_path[MAX_SHM_PATH_LENGTH]={0};
 
     if(argc < 2){
         read(STDIN_FILENO, shm_path, MAX_SHM_PATH_LENGTH);
@@ -65,14 +65,14 @@ int main(int argc,char **argv){
     
     // Set up shared memory, semaphores and sigint handler
     
-    setup();
+    setup(shm_path);
 
     read_buffer();
 
     return 0;
 
 }
-void setup(){
+void setup(char * shm_path){
 
     // Setup shared memory
 
