@@ -77,7 +77,6 @@ int main(int argc, char **argv){
 
     int sm_fds[SLAVES_QTY][2];      // Slave -> Master pipes
     int ms_fds[SLAVES_QTY][2];      // Master -> Slave pipes
-    
    
     setup();
 
@@ -100,7 +99,6 @@ void setup(){
     if(logfile_fd == NULL){
         handle_error("Opening log file");
     }
-
 
     // Setup shared memory
 
@@ -133,9 +131,12 @@ void setup(){
     if(sem_write_bytes == SEM_FAILED){
         handle_error("Opening write_bytes semaphore");
     }
+
+    // Wait some time for the view to connect and print shm name
     
     write(STDOUT_FILENO, SHM_NAME,NAME_SIZE);
     sleep(DELAY_FOR_VIEW);
+
     // Set up SIGINT handler
 
     struct sigaction _sigact;
@@ -143,12 +144,6 @@ void setup(){
 
     _sigact.sa_handler = sigint_handler;
     sigaction(SIGINT, &_sigact, NULL);
-
-
-    // Wait some time for the view to connect and print shm name
-
-
-
 
 }
 
@@ -321,6 +316,7 @@ void finish(){
 
     
     kill_slaves();
+
     // Close log file
 
     if(fclose(logfile_fd) == -1){
