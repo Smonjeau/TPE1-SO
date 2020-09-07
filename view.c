@@ -121,12 +121,8 @@ void read_buffer(){
 
         char c = base[pos++ % SHM_SIZE];
         
-        if(c == '\n'){
-            putchar(c);
-            continue;
-        }
 
-        else if(c == EOT)
+         if(c == EOT)
             finish();
 
         else if (c==',')
