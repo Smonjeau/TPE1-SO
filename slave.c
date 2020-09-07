@@ -171,6 +171,7 @@ void process(char *input, char *output) {
 		strcat(output, "Slave PID: "); //Amigable para usuario
 		strcat(output, str_for_pid);
 		strcat(output, "\n");
+		strcat(output, "----------------\n");
 		fclose(fp);
 
 		close(pipe_fd_grep_slave[0]);
