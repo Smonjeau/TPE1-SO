@@ -270,7 +270,6 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
                                 outpos += sprintf(output+outpos, ",%s", files[filen++]);
                             }
 
-                            // printf("For S%d: %s\n", i, output);
 
                             write(ms_fds[i][1], output, MAX_MESSAGE_LEN);
                             pending_jobs += 1;
@@ -279,7 +278,6 @@ void handle_slaves(int sm_fds[][2], int ms_fds[][2], int nfiles, char **files){
 
                             // Slave sent a job response
 
-                            // printf("S%d: %s\n", i, input);
 
                             for(int input_pos=0; input[input_pos] != 0; input_pos++){
                                 write_buffer(input[input_pos]);
