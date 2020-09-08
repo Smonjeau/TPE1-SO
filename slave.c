@@ -180,7 +180,6 @@ void process(char *input, char *output) {
 		waitpid(forkMinisat, &intresult, WUNTRACED); //Esperamos a que termine el minisat
 		waitpid(forkGrep, &intresult, WUNTRACED); //Esperamos a que termine el grep
 
-		// printf(outputForMaster);
 
 		token = strtok(NULL, ",");
 	}
